@@ -16,7 +16,7 @@ This Python script automates the process of organizing a Secret Santa (Amigo Sec
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/your-username/amigo-secreto-script.git
+   git clone https://github.com/brunolemos06/amigo-secreto-script.git
     ```
 2. **Install the required dependencies:**
 
