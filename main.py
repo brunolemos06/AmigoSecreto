@@ -11,9 +11,9 @@ import sys
 load_dotenv()
 
 # Configurações
-df = pd.read_excel('participants.xlsx')
-user = os.getenv("USER")
-token = os.getenv("TOKEN")
+df = pd.read_excel('test.xlsx')
+user = str(os.getenv("EMAIL"))
+token = str(os.getenv("TOKEN"))
 
 # Função para sortear o Amigo Secreto
 def sortear_amigo_secreto(df):
@@ -31,7 +31,7 @@ def sortear_amigo_secreto(df):
     return sorteio
 
 # Função para enviar o email
-def send_email(user, token, destinatario_nome, destinatario_email,data):
+def send_email(user, token, destinatario_nome, destinatario_email,subject,data):
     # Conectar ao servidor SMTP
     server = smtplib.SMTP('smtp.gmail.com', 587)
     server.starttls()
@@ -41,7 +41,7 @@ def send_email(user, token, destinatario_nome, destinatario_email,data):
     msg = MIMEMultipart()
     msg['From'] = user
     msg['To'] = destinatario_email
-    msg['Subject'] = "Jantar de Natal"
+    msg['Subject'] = subject
 
     # Corpo do email
     body = f"Ola {destinatario_nome},\n"
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     else:
         for (sorteado) in sorteio:
             data = "O teu amigo secreto é " + str(sorteado[1]['Name'])
-            # send_email(user, token, str(sorteado[0]['Name']), str(sorteado[0]['Email']), data)
+            send_email(user, token, str(sorteado[0]['Name']), str(sorteado[0]['Email']),"Jantar de Natal" ,data)
             print("[OK] Email enviado a " + str(sorteado[0]['Name']) + " com sucesso!")
 
     print("Sorteio concluido!")
