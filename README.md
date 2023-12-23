@@ -34,7 +34,7 @@ This Python script automates the process of organizing a Secret Santa (Amigo Sec
 
     MAKE SURE TO KEEP THIS FILE PRIVATE AND DO NOT SHARE IT WITH ANYONE!
 
-4. **Create an Excel file with the following columns:**
+4. **Create an Excel file named `participants.xlsx` with the following columns:**
     - `Name`: Participant's name
     - `Email`: Participant's email address
 
