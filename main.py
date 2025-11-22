@@ -10,62 +10,116 @@ import sys
 
 load_dotenv()
 
-# Configurações
-df = pd.read_excel('test.xlsx')
+df = pd.read_excel('participants.xlsx')
 user = str(os.getenv("EMAIL"))
 token = str(os.getenv("TOKEN"))
 
-# Função para sortear o Amigo Secreto
+
+# -------- FUNÇÃO SEGURA: DERANGEMENT --------
 def sortear_amigo_secreto(df):
-    sorteio = []
-    copia = df.copy()
+    # Tem de ter mais de 1 participante
+    if len(df) < 2:
+        raise ValueError("É necessário ter pelo menos 2 participantes para o sorteio.")
 
-    for _, sorteado in df.iterrows():
-        amigo_secreto = sorteado
-        while amigo_secreto.equals(sorteado):
-            amigo_secreto = copia.sample(n=1).iloc[0]
+    indices = list(df.index)
+    sorteados = indices.copy()
 
-        sorteio.append([sorteado, amigo_secreto])
-        copia = copia[copia.index != amigo_secreto.index[0]]
+    while True:
+        random.shuffle(sorteados)
+        # verifica se alguém calhou a si próprio
+        if all(i != sorteados[idx] for idx, i in enumerate(indices)):
+            break
 
-    return sorteio
+    # Criar pares (participante -> amigo secreto)
+    resultado = []
+    for idx, i in enumerate(indices):
+        participante = df.loc[i]
+        amigo = df.loc[sorteados[idx]]
+        resultado.append([participante, amigo])
 
-# Função para enviar o email
-def send_email(user, token, destinatario_nome, destinatario_email,subject,data):
-    # Conectar ao servidor SMTP
+    return resultado
+
+
+# -------- VALIDAR --------
+def validar_sorteio(df, sorteio):
+    if len(sorteio) != len(df):
+        return False
+
+    nomes = set(df["Name"])
+
+    atribuidores = set()
+    atribuidos = set()
+
+    for s, a in sorteio:
+        if s['Name'] == a['Name']:
+            return False
+        atribuidores.add(s['Name'])
+        atribuidos.add(a['Name'])
+
+    return atribuidores == nomes and atribuidos == nomes
+
+
+# -------- EMAIL --------
+def send_email(user, token, destinatario_nome, destinatario_email, subject, data):
     server = smtplib.SMTP('smtp.gmail.com', 587)
     server.starttls()
     server.login(user, token)
 
-    # Criar a mensagem
     msg = MIMEMultipart()
     msg['From'] = user
     msg['To'] = destinatario_email
     msg['Subject'] = subject
 
-    # Corpo do email
-    body = f"Ola {destinatario_nome},\n"
-    body += (data + "\n\n")
-    body += "Cumprimentos"
+    body = f"Ola {destinatario_nome},\n{data}\n\nCumprimentos"
     msg.attach(MIMEText(body, 'plain'))
 
-    # Enviar email
     server.sendmail(user, destinatario_email, msg.as_string())
     server.quit()
 
 
+# -------- MAIN --------
 if __name__ == '__main__':
-    print("Numero de participantes: " + str(len(df)))
+    print("Numero de participantes:", len(df))
     print("A sortear...")
-    sorteio = sortear_amigo_secreto(df)
-    # if exists arg with --test just print the result and don't send the emails
-    if len(sys.argv) > 1 and (sys.argv[1] == "--test" or sys.argv[1] == "--t" or sys.argv[1] == "-test" or sys.argv[1] == "-t"):
-        for (sorteado) in sorteio:
-            print(sorteado[0]['Name'] + " -> " + sorteado[1]['Name'])
-    else:
-        for (sorteado) in sorteio:
-            data = "O teu amigo secreto é " + str(sorteado[1]['Name'])
-            send_email(user, token, str(sorteado[0]['Name']), str(sorteado[0]['Email']),"Jantar de Natal" ,data)
-            print("[OK] Email enviado a " + str(sorteado[0]['Name']) + " com sucesso!")
+    if( len(df) < 2 ):
+        print("Erro: É necessário ter pelo menos 2 participantes para o sorteio.")
+        sys.exit(1)
+    
+    # TEST MODE
+    numeroTestes = 10
+    if len(sys.argv) > 1 and sys.argv[1] in ["--test", "-t"]:
+        print("MDODO TESTE ATIVADO - A executar", numeroTestes, "testes...")
+        ok = 0
+        fail = 0
 
-    print("Sorteio concluido!")
+        for i in range(1, numeroTestes + 1):
+            sorteio = sortear_amigo_secreto(df)
+            if validar_sorteio(df, sorteio):
+                ok += 1
+            else:
+                fail += 1
+                print(f"[FALHA] Teste {i}")
+                for s, a in sorteio:
+                    print(f"{s['Name']} -> {a['Name']}")
+
+        print("\n========== RESULTADOS ==========")
+        print("✔️ Sucessos:", ok)
+        print("❌ Falhas:", fail)
+        # Imprimir 1 resultado de exemplo
+        print("\nExemplo de sorteio:")
+        exemplo = sortear_amigo_secreto(df)
+        for s, a in exemplo:
+            print(f"{s['Name']} -> {a['Name']}")
+    else:
+        # MODO NORMAL
+        sorteio = sortear_amigo_secreto(df)
+        if not validar_sorteio(df, sorteio):
+            print("Erro: Sorteio inválido.")
+            sys.exit(1)
+
+        for s, a in sorteio:
+            data = f"O teu amigo secreto é {a['Name']}"
+            send_email(user, token, s['Name'], s['Email'], "Jantar de Natal", data)
+            print("[OK] Email enviado a", s['Name'])
+
+        print("Sorteio concluido!")
